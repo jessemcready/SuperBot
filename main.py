@@ -84,4 +84,4 @@ def extractRunes(tree):
     runes = [markString, glyphString, sealString, quintString]
     return runes
 
-client.run('MzEwOTM5MTYyMTg4NDQ3NzQ1.DFY9ag.yUPTBA-hQ-yypPHE-Uv_1br_iko')
+client.run('<YOUR DISCORD TOKEN')
