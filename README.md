@@ -17,5 +17,5 @@ If successful, you will see:
 
 With the bot up and running, you can use it two ways:
 
-1) !<champion name> <role> to get League of Legends champion information
-2) .yt <video search terms> to get the first video that would appear on youtube when searching those terms.
+1) !"champion name" "role" to get League of Legends champion information
+2) .yt "video search terms" to get the first video that would appear on youtube when searching those terms.
