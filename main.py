@@ -30,8 +30,10 @@ async def on_message(message):
         bestKeystone = extractKeystone(tree)
         bestMasteries = extractMasteries(tree)
         bestRunes = extractRunes(tree)
+        weakAgainst = extractWeakAgainst(tree)
+        strongAgainst = extractStrongAgainst(tree)
         skillString = ''.join(bestSkill)
-        await client.send_message(message.channel, 'https://na.op.gg/champion/' + champion + '/statistics/' + role + '\nTLDR: \n\nCore Build: \n' + bestBuild[0] + ' -> ' + bestBuild[1] + ' -> ' + bestBuild[2] +'\n\nSkills: \n' + skillString[0] + ' -> ' + skillString[1] + ' -> ' + skillString[2] + '\n\nKeystone And Masteries\n' + bestKeystone + '\t' + bestMasteries + '\n\nRunes\n' + bestRunes[0] + '\n' + bestRunes[1] + '\n' + bestRunes[2] + '\n' + bestRunes[3] + '\n')
+        await client.send_message(message.channel, 'https://na.op.gg/champion/' + champion + '/statistics/' + role + '\nTLDR: \n\nCore Build: \n' + bestBuild[0] + ' -> ' + bestBuild[1] + ' -> ' + bestBuild[2] +'\n\nSkills: \n' + skillString[0] + ' -> ' + skillString[1] + ' -> ' + skillString[2] + '\n\nKeystone And Masteries\n' + bestKeystone + '\t' + bestMasteries + '\n\nRunes\n' + bestRunes[0] + '\n' + bestRunes[1] + '\n' + bestRunes[2] + '\n' + bestRunes[3] + '\n\nWeak Against: ' + weakAgainst + '\nStrong Against: ' + strongAgainst)
     if message.content.startswith('.help'):
         await client.send_message(message.channel, 'To get champion data, type !<champion name> <role>\n' + 'Or type .yt <search terms> to get a YouTube video')
     if message.content.startswith('.yt'):
@@ -41,7 +43,9 @@ async def on_message(message):
         tree = html.fromstring(page.content)
         videoLink = tree.xpath('//*[@id="results"]//ol//li[2]//ol//li//div//div//div[2]//h3//a/@href')
         link = ''.join(videoLink)
-        await client.send_message(message.channel, 'https://www.youtube.com' + link)
+        link = link[1:]
+        youTubeLink = link.split('/')
+        await client.send_message(message.channel, 'https://www.youtube.com/' + youTubeLink[0])
 
 def extractBuild(tree):
     build = tree.xpath('//tbody[@class="Content"]//tr[6]//td[@class="Cell ListCell"]//div[@class="Item"]//img//@alt')
@@ -58,9 +62,9 @@ def extractKeystone(tree):
     return keystone
 
 def extractMasteries(tree):
-    ferocityMasteries = tree.xpath('/html/body/div[1]/div[2]/div[2]/div[4]/div[4]/div[1]/div[1]/div/div/table/tbody/tr[16]/td[2]/div/div[1]/div[1]/strong/text()')
-    cunningMasteries = tree.xpath('/html/body/div[1]/div[2]/div[2]/div[4]/div[4]/div[1]/div[1]/div/div/table/tbody/tr[16]/td[2]/div/div[2]/div[1]/strong/text()')
-    resolveMasteries = tree.xpath('/html/body/div[1]/div[2]/div[2]/div[4]/div[4]/div[1]/div[1]/div/div/table/tbody/tr[16]/td[2]/div/div[3]/div[1]/strong/text()')
+    ferocityMasteries = tree.xpath('/html/body/div[1]/div[3]/div[4]/div[4]/div[1]/div[1]/div/div/table/tbody/tr[16]/td[2]/div/div[1]/div[1]/strong/text()')
+    cunningMasteries = tree.xpath('/html/body/div[1]/div[3]/div[4]/div[4]/div[1]/div[1]/div/div/table/tbody/tr[16]/td[2]/div/div[2]/div[1]/strong/text()')
+    resolveMasteries = tree.xpath('/html/body/div[1]/div[3]/div[4]/div[4]/div[1]/div[1]/div/div/table/tbody/tr[16]/td[2]/div/div[3]/div[1]/strong/text()')
 
     ferMast = ''.join(ferocityMasteries)
     cunMast = ''.join(cunningMasteries)
@@ -84,4 +88,15 @@ def extractRunes(tree):
     runes = [markString, glyphString, sealString, quintString]
     return runes
 
-client.run('<YOUR DISCORD TOKEN')
+def extractWeakAgainst(tree):
+    weak = tree.xpath('//td[@class="ChampionName"]/text()')
+    weakAgainst = ''.join(weak[0]) + ' ' + ''.join(weak[1]) + ' ' + ''.join(weak[2])
+    return weakAgainst
+
+
+def extractStrongAgainst(tree):
+    strong = tree.xpath('//td[@class="ChampionName"]/text()')
+    strongAgainst = ''.join(strong[3]) + ' ' + ''.join(strong[4]) + ' ' + ''.join(strong[5])
+    return strongAgainst
+
+client.run('<Your Token Here>')
