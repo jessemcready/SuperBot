@@ -33,7 +33,7 @@ async def on_message(message):
         weakAgainst = extractWeakAgainst(tree)
         strongAgainst = extractStrongAgainst(tree)
         skillString = ''.join(bestSkill)
-        await client.send_message(message.channel, 'https://na.op.gg/champion/' + champion + '/statistics/' + role + '\nTLDR: \n\nCore Build: \n' + bestBuild[0] + ' -> ' + bestBuild[1] + ' -> ' + bestBuild[2] +'\n\nSkills: \n' + skillString[0] + ' -> ' + skillString[1] + ' -> ' + skillString[2] + '\n\nKeystone And Masteries\n' + bestKeystone + '\t' + bestMasteries + '\n\nRunes\n' + bestRunes[0] + '\n' + bestRunes[1] + '\n' + bestRunes[2] + '\n' + bestRunes[3] + '\n\nWeak Against: ' + weakAgainst + '\nStrong Against: ' + strongAgainst)
+        await client.send_message(message.channel, 'https://na.op.gg/champion/' + champion + '/statistics/' + role + '\nTLDR: \n\nCore Build: \n' + bestBuild[0] + ' -> ' + bestBuild[1] + ' -> ' + bestBuild[2] +'\n\nSkills: \n' + skillString[0] + ' -> ' + skillString[1] + ' -> ' + skillString[2] + '\n\nKeystone And Masteries\n' + bestKeystone + '\t' + bestMasteries + '\n\nRunes\n' + bestRunes + '\n\nWeak Against: ' + weakAgainst + '\nStrong Against: ' + strongAgainst)
     if message.content.startswith('.help'):
         await client.send_message(message.channel, 'To get champion data, type !<champion name> <role>\n' + 'Or type .yt <search terms> to get a YouTube video')
     if message.content.startswith('.yt'):
@@ -75,17 +75,14 @@ def extractMasteries(tree):
     return masteries
 
 def extractRunes(tree):
-    marks = tree.xpath('//tbody[@class="Content"]//tr[18]//td[@class="Cell Single"]//div[@class="RuneItemList"]//div[1]//div/text()')
-    glyphs = tree.xpath('//tbody[@class="Content"]//tr[18]//td[@class="Cell Single"]//div[@class="RuneItemList"]//div[2]//div/text()')
-    seals = tree.xpath('//tbody[@class="Content"]//tr[18]//td[@class="Cell Single"]//div[@class="RuneItemList"]//div[3]//div/text()')
-    quints = tree.xpath('//tbody[@class="Content"]//tr[18]//td[@class="Cell Single"]//div[@class="RuneItemList"]//div[4]//div/text()')
+    testRunes = tree.xpath('/html/body/div[1]/div[3]/div[4]/div[4]/div[1]/div[1]/div/div/table/tbody/tr[18]/td[2]/div//*/text()')
+    for i in range(0, len(testRunes)):
+        if '\n' in testRunes[i] or '\t' in testRunes[i]:
+            testRunes[i] = ''
+        if 'x' in testRunes[i]:
+            testRunes[i] = '\n' + testRunes[i]
 
-    markString = ''.join(marks)
-    glyphString = ''.join(glyphs)
-    sealString = ''.join(seals)
-    quintString = ''.join(quints)
-
-    runes = [markString, glyphString, sealString, quintString]
+    runes = ''.join(testRunes)
     return runes
 
 def extractWeakAgainst(tree):
@@ -99,4 +96,4 @@ def extractStrongAgainst(tree):
     strongAgainst = ''.join(strong[3]) + ' ' + ''.join(strong[4]) + ' ' + ''.join(strong[5])
     return strongAgainst
 
-client.run('<Your Token Here>')
+client.run('<Your token here>')
