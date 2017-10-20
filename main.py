@@ -1,9 +1,14 @@
 import discord
+from riotwatcher import RiotWatcher
 import asyncio
 from lxml import html
 import requests
+from requests import HTTPError
+import json
 
 client = discord.Client()
+watcher = RiotWatcher('<riot game api>')
+my_region = 'na1' # change based on whatever server you're on
 
 @client.event
 async def on_ready():
@@ -23,8 +28,11 @@ async def on_message(message):
         if role == "jg":
             role = "jungle"
 
+        # get the page
         page = requests.get('https://na.op.gg/champion/' + champion + '/statistics/' + role)
+        # build an xml tree
         tree = html.fromstring(page.content)
+        # parse the tree for builds, skills, keystones, etc
         bestBuild = extractBuild(tree)
         bestSkill = extractSkills(tree)
         bestKeystone = extractKeystone(tree)
@@ -33,19 +41,49 @@ async def on_message(message):
         weakAgainst = extractWeakAgainst(tree)
         strongAgainst = extractStrongAgainst(tree)
         skillString = ''.join(bestSkill)
+        # send a message from the bot to discord
         await client.send_message(message.channel, 'https://na.op.gg/champion/' + champion + '/statistics/' + role + '\nTLDR: \n\nCore Build: \n' + bestBuild[0] + ' -> ' + bestBuild[1] + ' -> ' + bestBuild[2] +'\n\nSkills: \n' + skillString[0] + ' -> ' + skillString[1] + ' -> ' + skillString[2] + '\n\nKeystone And Masteries\n' + bestKeystone + '\t' + bestMasteries + '\n\nRunes\n' + bestRunes + '\n\nWeak Against: ' + weakAgainst + '\nStrong Against: ' + strongAgainst)
     if message.content.startswith('.help'):
-        await client.send_message(message.channel, 'To get champion data, type !<champion name> <role>\n' + 'Or type .yt <search terms> to get a YouTube video')
+        await client.send_message(message.channel, 'To get summoner data, type .rank <summoner1>,<summoner2>...To get champion data, type !<champion name> <role>\n' + 'Or type .yt <search terms> to get a YouTube video')
     if message.content.startswith('.yt'):
+        # gets rid of the ".yt " when parsing the message
         tempMessage = message.content[4:]
+        # youtube uses '+' instead of ' ' so just sub out
         tempMessage = tempMessage.replace(' ', '+')
         page = requests.get('https://www.youtube.com/results?search_query=' + tempMessage)
         tree = html.fromstring(page.content)
         videoLink = tree.xpath('//*[@id="results"]//ol//li[2]//ol//li//div//div//div[2]//h3//a/@href')
         link = ''.join(videoLink)
         link = link[1:]
+        # sometimes you will have multiple number sets separated by '/' and you want the first one
         youTubeLink = link.split('/')
         await client.send_message(message.channel, 'https://www.youtube.com/' + youTubeLink[0])
+    if message.content.startswith('.rank'):
+        summonerMessage = message.content[6:]
+        # check to see if any summoners were asked for
+        if len(summonerMessage) == 0:
+            await client.send_message(message.channel, 'Oops, seems like you need to add some summoner names!')
+        # put a cap on the number to enforce rate limiting
+        if summonerMessage.count(',') == 9:
+            await client.send_message(message.channel, 'We only allow 10 summoner names at a time!')
+        summoners = summonerMessage.split(', ')
+        summonerData = getSummonerData(summoners)
+        await client.send_message(message.channel, summonerData)
+
+# used for checking errors when accessing RIOT api
+# 429 for too many requests
+# 400 for summoner not found
+try:
+    response = watcher.summoner.by_name(my_region, 'this_is_probably_not_anyones_summoner_name')
+except HTTPError as err:
+    if err.response.status_code == 429:
+        print('We should retry in {} seconds.'.format(e.headers['Retry-After']))
+        print('this retry-after is handled by default by the RiotWatcher library')
+        print('future requests wait until the retry-after time passes')
+    elif err.response.status_code == 404:
+        print('Summoner with that ridiculous name not found.')
+    else:
+        raise
 
 def extractBuild(tree):
     build = tree.xpath('//tbody[@class="Content"]//tr[6]//td[@class="Cell ListCell"]//div[@class="Item"]//img//@alt')
@@ -53,7 +91,6 @@ def extractBuild(tree):
 
 def extractSkills(tree):
     skillOrder =  tree.xpath('//span[@class="ExtraString"]/text()')
-
     return skillOrder
 
 def extractKeystone(tree):
@@ -96,4 +133,22 @@ def extractStrongAgainst(tree):
     strongAgainst = ''.join(strong[3]) + ' ' + ''.join(strong[4]) + ' ' + ''.join(strong[5])
     return strongAgainst
 
-client.run('<Your token here>')
+def getSummonerData(summonerNames):
+    summoner_stats = []
+    for summoner in summonerNames:
+        summonerId = getSummonerId(summoner)
+        summoner_stats_json = watcher.league.positions_by_summoner(my_region, summonerId)
+        position = summoner_stats_json[0]['tier'] + ' ' + summoner_stats_json[0]['rank']
+        totalData = summoner + ' ' + position
+        totalData.replace('[','')
+        totalData.replace(']','')
+        totalData.replace("'",'')
+        summoner_stats.append(totalData)
+    return summoner_stats
+
+def getSummonerId(summonerName):
+    summonerJSON = watcher.summoner.by_name(my_region, summonerName)
+    summonerId = summonerJSON['id']
+    return summonerId
+
+client.run('<discord api key>')
