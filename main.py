@@ -7,7 +7,7 @@ from requests import HTTPError
 import json
 
 client = discord.Client()
-watcher = RiotWatcher('<riot game api>')
+watcher = RiotWatcher('<your riot api key>')
 my_region = 'na1' # change based on whatever server you're on
 
 @client.event
@@ -67,8 +67,11 @@ async def on_message(message):
         if summonerMessage.count(',') == 9:
             await client.send_message(message.channel, 'We only allow 10 summoner names at a time!')
         summoners = summonerMessage.split(', ')
+        summonerString = ''
         summonerData = getSummonerData(summoners)
-        await client.send_message(message.channel, summonerData)
+        for i in range(len(summonerData)):
+            summonerString += summonerData[i] + '\n'
+        await client.send_message(message.channel, summonerString)
 
 # used for checking errors when accessing RIOT api
 # 429 for too many requests
@@ -138,12 +141,12 @@ def getSummonerData(summonerNames):
     for summoner in summonerNames:
         summonerId = getSummonerId(summoner)
         summoner_stats_json = watcher.league.positions_by_summoner(my_region, summonerId)
-        position = summoner_stats_json[0]['tier'] + ' ' + summoner_stats_json[0]['rank']
-        totalData = summoner + ' ' + position
-        totalData.replace('[','')
-        totalData.replace(']','')
-        totalData.replace("'",'')
-        summoner_stats.append(totalData)
+        for leagues in summoner_stats_json:
+            if leagues["queueType"] == "RANKED_SOLO_5x5":
+                position = leagues['tier'] + ' ' + leagues['rank'] + ' ' + str(leagues['leaguePoints'])
+                totalData = summoner + ' ' + position
+                summoner_stats.append(totalData)
+    print(summoner_stats)
     return summoner_stats
 
 def getSummonerId(summonerName):
@@ -151,4 +154,4 @@ def getSummonerId(summonerName):
     summonerId = summonerJSON['id']
     return summonerId
 
-client.run('<discord api key>')
+client.run('<your discord api key>')
