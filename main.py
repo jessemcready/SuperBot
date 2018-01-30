@@ -5,9 +5,11 @@ from lxml import html
 import requests
 from requests import HTTPError
 import json
+import config
+import string
 
 client = discord.Client()
-watcher = RiotWatcher('<your riot api key>')
+watcher = RiotWatcher(config.riotApiKey)
 my_region = 'na1' # change based on whatever server you're on
 
 @client.event
@@ -35,14 +37,10 @@ async def on_message(message):
         # parse the tree for builds, skills, keystones, etc
         bestBuild = extractBuild(tree)
         bestSkill = extractSkills(tree)
-        bestKeystone = extractKeystone(tree)
-        bestMasteries = extractMasteries(tree)
         bestRunes = extractRunes(tree)
-        weakAgainst = extractWeakAgainst(tree)
-        strongAgainst = extractStrongAgainst(tree)
         skillString = ''.join(bestSkill)
         # send a message from the bot to discord
-        await client.send_message(message.channel, 'https://na.op.gg/champion/' + champion + '/statistics/' + role + '\nTLDR: \n\nCore Build: \n' + bestBuild[0] + ' -> ' + bestBuild[1] + ' -> ' + bestBuild[2] +'\n\nSkills: \n' + skillString[0] + ' -> ' + skillString[1] + ' -> ' + skillString[2] + '\n\nKeystone And Masteries\n' + bestKeystone + '\t' + bestMasteries + '\n\nRunes\n' + bestRunes + '\n\nWeak Against: ' + weakAgainst + '\nStrong Against: ' + strongAgainst)
+        await client.send_message(message.channel, 'https://na.op.gg/champion/' + champion + '/statistics/' + role + '\nTLDR: \n\nCore Build: \n' + bestBuild +'\n\nSkills: \n' + skillString + '\n\nRunes\n' + bestRunes)
     if message.content.startswith('.help'):
         await client.send_message(message.channel, 'To get summoner data, type .rank <summoner1>,<summoner2>...To get champion data, type !<champion name> <role>\n' + 'Or type .yt <search terms> to get a YouTube video')
     if message.content.startswith('.yt'):
@@ -67,7 +65,7 @@ async def on_message(message):
         if summonerMessage.count(',') == 9:
             await client.send_message(message.channel, 'We only allow 10 summoner names at a time!')
         summoners = summonerMessage.split(', ')
-        summonerString = ''
+        summonerString = ' '
         summonerData = getSummonerData(summoners)
         for i in range(len(summonerData)):
             summonerString += summonerData[i] + '\n'
@@ -89,52 +87,32 @@ except HTTPError as err:
         raise
 
 def extractBuild(tree):
-    build = tree.xpath('//tbody[@class="Content"]//tr[6]//td[@class="Cell ListCell"]//div[@class="Item"]//img//@alt')
-    return build
+    build = ''.join(tree.xpath('/html/body/div[1]/div[3]/div/div[2]/div[2]/div[1]/div/div[1]/table[2]/tbody/tr[3]/td[1]/ul//@title')).strip()
+    build = build.split("<b style=", 3)
+    firstItem = build[1][17:]
+    firstItem = firstItem.split('<')
+    firstItem = ''.join(firstItem[0])
+    secondItem = build[2][17:]
+    secondItem = secondItem.split('<')
+    secondItem = ''.join(secondItem[0])
+    thirdItem = build[3][17:]
+    thirdItem = thirdItem.split('<')
+    thirdItem = ''.join(thirdItem[0])
+    finalBuild = firstItem + '->' + secondItem + '->' + thirdItem
+    return finalBuild
 
 def extractSkills(tree):
-    skillOrder =  tree.xpath('//span[@class="ExtraString"]/text()')
+    skillOrder = ''
+    for i in range(0, 15):
+        skillOrder += ' '.join(tree.xpath('/html/body/div[1]/div[3]/div/div[2]/div[2]/div[1]/div/div[1]/table[1]/tbody[2]/tr/td[1]/table/tbody/tr[2]/td[' + str(i) + ']/text()')).strip()
     return skillOrder
 
-def extractKeystone(tree):
-    key = tree.xpath('//tbody[@class="Content"]//tr[14]//td[@class="Cell Single"]//div[@class="Name"]/text()')
-    keystone = ''.join(key)
-    return keystone
-
-def extractMasteries(tree):
-    ferocityMasteries = tree.xpath('/html/body/div[1]/div[3]/div[4]/div[4]/div[1]/div[1]/div/div/table/tbody/tr[16]/td[2]/div/div[1]/div[1]/strong/text()')
-    cunningMasteries = tree.xpath('/html/body/div[1]/div[3]/div[4]/div[4]/div[1]/div[1]/div/div/table/tbody/tr[16]/td[2]/div/div[2]/div[1]/strong/text()')
-    resolveMasteries = tree.xpath('/html/body/div[1]/div[3]/div[4]/div[4]/div[1]/div[1]/div/div/table/tbody/tr[16]/td[2]/div/div[3]/div[1]/strong/text()')
-
-    ferMast = ''.join(ferocityMasteries)
-    cunMast = ''.join(cunningMasteries)
-    resMast = ''.join(resolveMasteries)
-
-    masteries = ferMast + '/' + cunMast + '/' + resMast
-
-    return masteries
-
 def extractRunes(tree):
-    testRunes = tree.xpath('/html/body/div[1]/div[3]/div[4]/div[4]/div[1]/div[1]/div/div/table/tbody/tr[18]/td[2]/div//*/text()')
-    for i in range(0, len(testRunes)):
-        if '\n' in testRunes[i] or '\t' in testRunes[i]:
-            testRunes[i] = ''
-        if 'x' in testRunes[i]:
-            testRunes[i] = '\n' + testRunes[i]
-
-    runes = ''.join(testRunes)
+    keystone = ''.join(tree.xpath('/html/body/div[1]/div[3]/div/div[2]/div[2]/div[1]/div/div[1]/div/table/tbody[2]/tr[1]/td[1]/div/div[1]/div[@class="perk-page__item perk-page__item--keystone perk-page__item--active"]/div/img//@alt'))
+    subRunes1 = tree.xpath('/html/body/div[1]/div[3]/div/div[2]/div[2]/div[1]/div/div[1]/div/table/tbody[2]/tr[1]/td[1]/div/div[1]/div[@class="perk-page__item  perk-page__item--active"]//@alt')
+    subRunes2 = tree.xpath('/html/body/div[1]/div[3]/div/div[2]/div[2]/div[1]/div/div[1]/div/table/tbody[2]/tr[1]/td[1]/div/div[2]/div[@class="perk-page__item perk-page__item--active"]/div/img//@alt')
+    runes = keystone + '\n' + subRunes1[0] + '->' + subRunes1[1] + '->' + subRunes1[2] + '\n' + subRunes2[0] + '->' + subRunes2[1]
     return runes
-
-def extractWeakAgainst(tree):
-    weak = tree.xpath('//td[@class="ChampionName"]/text()')
-    weakAgainst = ''.join(weak[0]) + ' ' + ''.join(weak[1]) + ' ' + ''.join(weak[2])
-    return weakAgainst
-
-
-def extractStrongAgainst(tree):
-    strong = tree.xpath('//td[@class="ChampionName"]/text()')
-    strongAgainst = ''.join(strong[3]) + ' ' + ''.join(strong[4]) + ' ' + ''.join(strong[5])
-    return strongAgainst
 
 def getSummonerData(summonerNames):
     summoner_stats = []
@@ -146,7 +124,6 @@ def getSummonerData(summonerNames):
                 position = leagues['tier'] + ' ' + leagues['rank'] + ' ' + str(leagues['leaguePoints'])
                 totalData = summoner + ' ' + position
                 summoner_stats.append(totalData)
-    print(summoner_stats)
     return summoner_stats
 
 def getSummonerId(summonerName):
@@ -154,4 +131,4 @@ def getSummonerId(summonerName):
     summonerId = summonerJSON['id']
     return summonerId
 
-client.run('<your discord api key>')
+client.run(config.discordToken)
